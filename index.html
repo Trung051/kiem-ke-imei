@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>Kiem Ke IMEI</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#111;color:#fff;font-family:-apple-system,sans-serif;overflow-x:hidden}
+    .overlay{position:fixed;inset:0;background:#0d1117;display:flex;align-items:center;justify-content:center;padding:16px;z-index:900}
+
+    /* CHON KHO */
+    #whOverlay{z-index:1000}
+    .wh-box{width:100%;max-width:340px}
+    .wh-box h2{font-size:18px;font-weight:700;color:#58a6ff;margin-bottom:6px;text-align:center}
+    .wh-box>p{font-size:12px;color:#8b949e;text-align:center;margin-bottom:20px;line-height:1.6}
+    .wh-card{width:100%;padding:16px 18px;margin-bottom:10px;background:#161b22;border:2px solid #21262d;border-radius:12px;cursor:pointer;text-align:left;-webkit-tap-highlight-color:transparent;transition:border-color .15s,background .15s}
+    .wh-card:active{background:#1c2128}
+    .wh-card.selected{border-color:#58a6ff;background:#0d1b2a}
+    .wh-card .wh-name{font-size:17px;font-weight:700;color:#c9d1d9;margin-bottom:3px}
+    .wh-card .wh-sheet{font-size:11px;color:#6e7681}
+    .wh-card .wh-check{float:right;margin-top:-22px;font-size:11px;font-weight:700;color:#58a6ff;display:none}
+    .wh-card.selected .wh-check{display:block}
+    #btnConfirmWh{width:100%;padding:14px;margin-top:4px;background:linear-gradient(135deg,#1f6feb,#58a6ff);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;opacity:.4;pointer-events:none;-webkit-tap-highlight-color:transparent}
+    #btnConfirmWh.active{opacity:1;pointer-events:auto}
+
+    /* HEADER */
+    .header{background:#0d1117;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;border-bottom:1px solid #21262d}
+    .header-left{display:flex;flex-direction:column;gap:2px}
+    .header h1{font-size:14px;font-weight:700;color:#58a6ff}
+    #whLabel{font-size:10px;color:#58a6ff;background:#0d1b2a;border:1px solid #1f6feb;border-radius:10px;padding:1px 8px;display:inline-block}
+    .badges{display:flex;gap:6px;align-items:center}
+    .badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700}
+    .b-ok{background:#0d2a1a;color:#3fb950;border:1px solid #238636}
+    .b-err{background:#2a0d0d;color:#f85149;border:1px solid #da3633}
+    #btnSwitchWh{padding:3px 9px;background:#161b22;color:#8b949e;border:1px solid #30363d;border-radius:10px;font-size:10px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+
+    /* CAMERA */
+    .cam-wrap{position:relative;width:100%;background:#000;overflow:hidden;min-height:200px;max-height:58vw}
+    #video{width:100%;height:100%;object-fit:cover;display:block}
+    #camBox{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0d1117;padding:16px}
+    #camBox.hidden{display:none}
+    #btnOpenCam{padding:13px 32px;margin-bottom:10px;background:linear-gradient(135deg,#1f6feb,#58a6ff);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(88,166,255,.3);-webkit-tap-highlight-color:transparent}
+    #btnOpenCam:active{opacity:.8}
+    #btnOpenCam:disabled{opacity:.5;pointer-events:none}
+    #camGuide{width:100%;max-width:340px;margin-top:6px;background:#161b22;border:1px solid #21262d;border-radius:10px;padding:12px 14px;font-size:11px;color:#6e7681;line-height:2;display:none}
+    #camGuide.show{display:block}
+    #camGuide .gt{font-size:12px;font-weight:700;margin-bottom:6px}
+    #camGuide .gt.red{color:#f85149}
+    #camGuide .gt.yellow{color:#d29922}
+    #camGuide b{color:#c9d1d9}
+    #camGuide .grn{color:#3fb950;font-weight:700}
+    #camGuide .red{color:#f85149}
+    #camGuide .blu{color:#58a6ff;word-break:break-all}
+    #camGuide .sep{border-top:1px solid #21262d;margin:8px 0}
+
+    #engineBadge{position:absolute;top:6px;left:6px;z-index:5;padding:2px 8px;border-radius:6px;font-size:9px;font-weight:700;background:rgba(0,0,0,.75)}
+    .eng-native{color:#3fb950;border:1px solid #238636}
+    .eng-jsqr{color:#58a6ff;border:1px solid #1f6feb}
+    #stratBadge{position:absolute;top:6px;right:6px;z-index:5;padding:2px 7px;border-radius:6px;font-size:9px;background:rgba(0,0,0,.75);color:#888;border:1px solid #333}
+    .scan-shadow{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 0 9999px rgba(0,0,0,.45)}
+    .frame-box{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:62%;aspect-ratio:1;pointer-events:none}
+    .c{position:absolute;width:20px;height:20px;border-color:#58a6ff;border-style:solid}
+    .tl{top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0}
+    .tr{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 4px 0 0}
+    .bl{bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 4px}
+    .br{bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 4px 0}
+    .scanline{position:absolute;width:100%;height:2px;background:linear-gradient(to right,transparent,#58a6ff 40%,#a5f3fc 50%,#58a6ff 60%,transparent);filter:blur(1px);animation:scan 1.6s ease-in-out infinite alternate}
+    @keyframes scan{from{top:2px;opacity:.7}to{top:calc(100% - 4px);opacity:1}}
+    .cam-ctrl{position:absolute;right:8px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:7px;z-index:5}
+    .cbtn{width:40px;height:28px;border-radius:6px;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.2);color:#ccc;font-size:10px;font-weight:600;cursor:pointer;display:none;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+    .cbtn:active{background:rgba(255,255,255,.15)}
+    .cbtn.on{background:rgba(255,220,0,.22);border-color:#ffd700;color:#ffd700}
+    .cbtn.show{display:flex}
+    .zoom-bar{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);z-index:5;display:none;align-items:center;gap:6px}
+    .zoom-bar.show{display:flex}
+    input[type=range]{-webkit-appearance:none;width:110px;height:4px;border-radius:2px;background:rgba(255,255,255,.25);outline:none}
+    input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#58a6ff;cursor:pointer}
+    .zlabel{font-size:10px;color:#aaa;min-width:30px;text-align:center}
+
+    #sb{min-height:30px;padding:6px 14px;font-size:12px;text-align:center;transition:background .2s,color .2s}
+    .s-idle{background:#161b22;color:#8b949e}
+    .s-load{background:#0d1b2a;color:#58a6ff}
+    .s-ok{background:#0d1f0d;color:#3fb950;font-weight:600}
+    .s-err{background:#1f0d0d;color:#f85149;font-weight:600}
+    .s-dup{background:#1f1d0d;color:#d29922;font-weight:600}
+
+    .ibar{display:flex;justify-content:space-between;align-items:center;padding:5px 12px;font-size:11px;border-bottom:1px solid #1c2128;background:#0d1117;gap:6px}
+    .ibar-left{display:flex;flex-direction:column;gap:2px}
+    .ibar-left span{color:#8b949e}
+    .ibar-left b{color:#c9d1d9}
+    #cacheStatus{font-size:10px;color:#555}
+    #cacheStatus.loaded{color:#3fb950}
+    #cacheStatus.loading{color:#58a6ff}
+    #cacheStatus.error{color:#f85149}
+    .ibar-right{display:flex;gap:6px;align-items:center;flex-shrink:0}
+    .bclear{padding:3px 10px;background:#161b22;color:#8b949e;border:1px solid #30363d;border-radius:16px;font-size:11px;cursor:pointer}
+    #btnRefresh{padding:3px 10px;background:#0d1b2a;color:#58a6ff;border:1px solid #1f6feb;border-radius:16px;font-size:11px;cursor:pointer}
+    #btnRefresh.spinning{animation:spin .8s linear infinite}
+    @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+    .stats-panel{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px;background:#0d1117;border-bottom:1px solid #1c2128}
+    .stat-box{background:#161b22;border-radius:8px;padding:8px 4px;text-align:center;border:1px solid #21262d}
+    .stat-box.ok{border-color:#238636;background:#0d2018}
+    .stat-box.err{border-color:#da3633;background:#200d0d}
+    .stat-box.dup{border-color:#9e6a03;background:#1e1c0d}
+    .stat-box.remain{border-color:#1f6feb;background:#0d1b2a}
+    .stat-box.pct{border-color:#8957e5;background:#1a0d2e}
+    .stat-num{font-size:20px;font-weight:700;color:#c9d1d9;line-height:1}
+    .stat-box.ok .stat-num{color:#3fb950}
+    .stat-box.err .stat-num{color:#f85149}
+    .stat-box.dup .stat-num{color:#d29922}
+    .stat-box.remain .stat-num{color:#58a6ff}
+    .stat-box.pct .stat-num{color:#bc8cff}
+    .stat-lbl{font-size:9px;color:#6e7681;margin-top:4px}
+    .prog-wrap{height:3px;background:#21262d;overflow:hidden}
+    .prog-bar{height:100%;background:linear-gradient(to right,#238636,#3fb950);width:0%;transition:width .4s ease}
+
+    #queue{padding:6px 8px 100px}
+    .qi{display:flex;align-items:center;padding:9px 11px;margin-bottom:5px;border-radius:8px;animation:pop .22s ease}
+    @keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+    .qi-ok{background:#0d2018;border-left:3px solid #238636}
+    .qi-err{background:#200d0d;border-left:3px solid #da3633}
+    .qi-dup{background:#1e1c0d;border-left:3px solid #9e6a03}
+    .qi-ico{font-size:11px;font-weight:700;margin-right:10px;flex-shrink:0;min-width:24px;text-align:center}
+    .qi-bd{flex:1;min-width:0}
+    .qi-imei{font-size:13px;font-weight:600;color:#c9d1d9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .qi-sub{font-size:11px;color:#6e7681;margin-top:2px;line-height:1.5;word-break:break-all}
+    .qi-t{font-size:10px;color:#3d444e;flex-shrink:0;margin-left:6px}
+  </style>
+</head>
+<body>
+
+<!-- CHON KHO -->
+<div id="whOverlay" class="overlay">
+  <div class="wh-box">
+    <h2>Chon Kho Kiem</h2>
+    <p>Chon kho can kiem ke IMEI</p>
+    <div id="whCards"></div>
+    <button id="btnConfirmWh" onclick="confirmWarehouse()">Xac Nhan</button>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <h1>Kiem Ke IMEI</h1>
+    <span id="whLabel">--</span>
+  </div>
+  <div class="badges">
+    <button id="btnSwitchWh" onclick="switchWarehouse()">Doi kho</button>
+    <span class="badge b-ok">OK <span id="cOk">0</span></span>
+    <span class="badge b-err">Loi <span id="cErr">0</span></span>
+  </div>
+</div>
+
+<!-- CAMERA -->
+<div class="cam-wrap">
+  <video id="video" autoplay playsinline muted></video>
+  <div id="camBox">
+    <button id="btnOpenCam">📷 Mo Camera</button>
+    <div id="camGuide">
+      <div class="gt" id="guideTitle"></div>
+      <div id="guideBody"></div>
+    </div>
+  </div>
+  <span id="engineBadge" class="eng-jsqr">jsQR</span>
+  <span id="stratBadge">S1</span>
+  <div class="scan-shadow"></div>
+  <div class="frame-box">
+    <div class="c tl"></div><div class="c tr"></div>
+    <div class="c bl"></div><div class="c br"></div>
+    <div class="scanline"></div>
+  </div>
+  <div class="cam-ctrl">
+    <button class="cbtn"      id="btnTorch" onclick="toggleTorch()">Den</button>
+    <button class="cbtn show" id="btnFlip"  onclick="flipCamera()">Lat</button>
+  </div>
+  <div class="zoom-bar" id="zoomBar">
+    <span class="zlabel">1x</span>
+    <input type="range" id="zSlider" min="1" max="5" step="0.1" value="1" oninput="applyZoom(this.value)">
+    <span class="zlabel" id="zVal">1x</span>
+  </div>
+</div>
+
+<div id="sb" class="s-idle">Chon kho de bat dau...</div>
+
+<div class="ibar">
+  <div class="ibar-left">
+    <span>Quet: <b id="cTotal">0</b> &nbsp;|&nbsp; Kho: <b id="cStock">--</b></span>
+    <span id="cacheStatus" class="loading">Chua tai du lieu</span>
+  </div>
+  <div class="ibar-right">
+    <button id="btnRefresh" onclick="refreshCache()">Tai lai</button>
+    <button class="bclear"  onclick="clearAll()">Xoa</button>
+  </div>
+</div>
+
+<div class="stats-panel">
+  <div class="stat-box"><div class="stat-num" id="stTotal">0</div><div class="stat-lbl">Da quet</div></div>
+  <div class="stat-box ok"><div class="stat-num" id="stOk">0</div><div class="stat-lbl">Co trong kho</div></div>
+  <div class="stat-box err"><div class="stat-num" id="stErr">0</div><div class="stat-lbl">Khong co</div></div>
+  <div class="stat-box dup"><div class="stat-num" id="stDup">0</div><div class="stat-lbl">Trung</div></div>
+  <div class="stat-box remain"><div class="stat-num" id="stRemain">--</div><div class="stat-lbl">Chua kiem</div></div>
+  <div class="stat-box pct"><div class="stat-num" id="stPct">0%</div><div class="stat-lbl">Hoan thanh</div></div>
+</div>
+
+<div class="prog-wrap"><div class="prog-bar" id="progBar"></div></div>
+<div id="queue"></div>
+
+<script>
+// ★★★ DAN URL GAS WEB APP CUA BAN VAO DAY ★★★
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbwucTgOlCTbZlI8LccFuqxoTEVk7Eq73isNUMKcg-Z1QGZl6Mdf8l1U7pq2uoOCs1Pb/exec';
+
+// ══ API HELPER ══
+function gasCall(params, onSuccess, onFail) {
+  var qs = Object.keys(params).map(function(k){
+    return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);
+  }).join('&');
+  fetch(GAS_URL+'?'+qs)
+    .then(function(r){ return r.json(); })
+    .then(function(data){ onSuccess(data); })
+    .catch(function(e){ if(onFail) onFail(e); else console.error(e); });
+}
+
+// ══ POLYFILL ══
+(function(){
+  if(!navigator.mediaDevices) navigator.mediaDevices={};
+  if(!navigator.mediaDevices.getUserMedia){
+    var fn=navigator.getUserMedia||navigator.webkitGetUserMedia||navigator.mozGetUserMedia;
+    if(fn) navigator.mediaDevices.getUserMedia=function(c){
+      return new Promise(function(ok,no){fn.call(navigator,c,ok,no);});
+    };
+  }
+})();
+
+// ══ STATE ══
+var video=document.getElementById('video');
+var dCanvas=document.createElement('canvas');
+var dCtx=dCanvas.getContext('2d',{willReadFrequently:true,alpha:false});
+var stream=null,vtrack=null;
+var torchOn=false,useBack=true;
+var lastCode='',lastTime=0,COOLDOWN=2000;
+var scanned=new Set();
+var cOk=0,cErr=0,cTotal=0,cDup=0,totalStock=0;
+var engine='jsqr',detector=null,audioCtx=null;
+var noCodeFrames=0;
+var imeiCache=null,cacheLoaded=false,cacheLoading=false;
+var WH_KEY='imei_selected_wh';
+var selectedWH=null,warehouses=[];
+var scanRunning=false;
+
+// ══ KHO ══
+function initWarehouseScreen(){
+  gasCall({action:'getWarehouses'},
+    function(list){
+      warehouses=list; renderWhCards();
+      var saved=warehouses.find(function(w){return w.sheet===localStorage.getItem(WH_KEY);});
+      if(saved) selectWarehouse(saved);
+    },
+    function(){
+      // Fallback neu loi mang
+      warehouses=[
+        {id:'wh1',label:'Kho 45XVNT',sheet:'Sheet1'},
+        {id:'wh2',label:'Kho 141',   sheet:'Sheet2'}
+      ];
+      renderWhCards();
+      var saved=warehouses.find(function(w){return w.sheet===localStorage.getItem(WH_KEY);});
+      if(saved) selectWarehouse(saved);
+    }
+  );
+}
+
+function renderWhCards(){
+  var c=document.getElementById('whCards');c.innerHTML='';
+  warehouses.forEach(function(wh){
+    var card=document.createElement('button');
+    card.className='wh-card';card.id='card_'+wh.id;
+    card.innerHTML='<div class="wh-name">'+wh.label+'</div>'
+      +'<div class="wh-sheet">'+wh.sheet+'</div>'
+      +'<div class="wh-check">✓ Chon</div>';
+    card.onclick=function(){selectWarehouse(wh);};
+    c.appendChild(card);
+  });
+}
+
+function selectWarehouse(wh){
+  selectedWH=wh;
+  document.querySelectorAll('.wh-card').forEach(function(c){c.classList.remove('selected');});
+  var card=document.getElementById('card_'+wh.id);
+  if(card) card.classList.add('selected');
+  var btn=document.getElementById('btnConfirmWh');
+  btn.classList.add('active');
+  btn.textContent='Kiem: '+wh.label;
+}
+
+function confirmWarehouse(){
+  if(!selectedWH) return;
+  localStorage.setItem(WH_KEY,selectedWH.sheet);
+  document.getElementById('whLabel').textContent=selectedWH.label;
+  document.getElementById('whOverlay').style.display='none';
+  resetSession();
+  loadIMEICache();
+  resetCamBox();
+}
+
+function switchWarehouse(){
+  if(stream){stream.getTracks().forEach(function(t){t.stop();});stream=null;}
+  scanRunning=false;
+  resetSession();
+  resetCamBox();
+  document.getElementById('whOverlay').style.display='flex';
+}
+
+function resetSession(){
+  imeiCache=null;cacheLoaded=false;cacheLoading=false;
+  scanned.clear();cOk=cErr=cTotal=cDup=0;lastCode='';noCodeFrames=0;totalStock=0;
+  ['cOk','cErr','cTotal'].forEach(function(id){document.getElementById(id).textContent='0';});
+  document.getElementById('queue').innerHTML='';
+  document.getElementById('cStock').textContent='--';
+  var cs=document.getElementById('cacheStatus');
+  cs.className='loading';cs.textContent='Chua tai du lieu';
+  updateStats();
+}
+
+// ══ CAM BOX ══
+function resetCamBox(){
+  var box=document.getElementById('camBox');
+  var btn=document.getElementById('btnOpenCam');
+  box.classList.remove('hidden');
+  btn.disabled=false;
+  btn.textContent='📷 Mo Camera';
+  document.getElementById('camGuide').classList.remove('show');
+}
+
+function showCamError(autoDenied,errName){
+  var btn=document.getElementById('btnOpenCam');
+  var guide=document.getElementById('camGuide');
+  var title=document.getElementById('guideTitle');
+  var body=document.getElementById('guideBody');
+  btn.disabled=false;
+  btn.textContent='🔄 Thu Lai';
+  if(errName==='NotAllowedError'||errName==='PermissionDeniedError'){
+    title.className='gt red';
+    if(autoDenied){
+      title.textContent='⚠️ Domain bi chan tu dong';
+      body.innerHTML=
+        'Chrome tu chon "Chan" cho domain nay.<br>'
+        +'<div class="sep"></div>'
+        +'<b>Bam bieu tuong 🔒 tren thanh dia chi</b><br>'
+        +'→ Quyen hoac Cai dat trang<br>'
+        +'→ Camera: <span class="red">Chan</span> → <span class="grn">Cho phep</span><br>'
+        +'→ Tai lai trang → Bam Thu Lai<br>'
+        +'<div class="sep"></div>'
+        +'<b>Hoac mo tab moi, nhap:</b><br>'
+        +'<span class="blu">chrome://settings/content/camera</span><br>'
+        +'→ Xoa trang web bi chan → Bam Thu Lai';
+    } else {
+      title.textContent='🚫 Da tu choi quyen camera';
+      body.innerHTML=
+        'Bam bieu tuong <b>🔒</b> tren thanh dia chi<br>'
+        +'→ Camera: <span class="red">Chan</span> → <span class="grn">Cho phep</span><br>'
+        +'→ Bam <b>Thu Lai</b>';
+    }
+  } else if(errName==='NotReadableError'||errName==='TrackStartError'){
+    title.className='gt yellow';
+    title.textContent='⚠️ Camera dang ban';
+    body.innerHTML='Dong Zalo/TikTok roi bam <b>Thu Lai</b>.';
+  } else {
+    title.className='gt red';
+    title.textContent='Loi: '+errName;
+    body.innerHTML='Bam <b>Thu Lai</b> hoac tai lai trang.';
+  }
+  guide.classList.add('show');
+}
+
+// ══ MO CAMERA (goi truc tiep trong onclick) ══
+document.getElementById('btnOpenCam').onclick=function(){
+  var btn=this;
+  btn.disabled=true;
+  btn.textContent='Dang mo...';
+  document.getElementById('camGuide').classList.remove('show');
+
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    showCamError(false,'NotSupportedError'); return;
+  }
+
+  var constraint=useBack
+    ?{video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}}
+    :{video:{facingMode:{ideal:'user'},width:{ideal:640},height:{ideal:480}}};
+
+  var t0=Date.now();
+  navigator.mediaDevices.getUserMedia(constraint)
+    .then(function(s){ onStreamReady(s); })
+    .catch(function(e){
+      btn.disabled=false;
+      btn.textContent='🔄 Thu Lai';
+      showCamError((Date.now()-t0)<800, e.name||'UnknownError');
+    });
+};
+
+function onStreamReady(s){
+  stream=s; vtrack=s.getVideoTracks()[0];
+  video.srcObject=stream;
+  document.getElementById('camBox').classList.add('hidden');
+  try{
+    vtrack.applyConstraints({advanced:[
+      {focusMode:'continuous'},{exposureMode:'continuous'},{whiteBalanceMode:'continuous'}
+    ]});
+  }catch(e){}
+  var caps=vtrack.getCapabilities?vtrack.getCapabilities():{};
+  if(caps.torch) document.getElementById('btnTorch').classList.add('show');
+  if(caps.zoom){
+    document.getElementById('zoomBar').classList.add('show');
+    var sl=document.getElementById('zSlider');
+    sl.min=caps.zoom.min||1;sl.max=Math.min(caps.zoom.max||5,6);
+    sl.step=caps.zoom.step||0.1;sl.value=caps.zoom.min||1;
+  }
+  setStatus('idle','Huong vao ma QR / Barcode...');
+  video.play().then(function(){initEngine();}).catch(function(){initEngine();});
+}
+
+function initEngine(){
+  if(!('BarcodeDetector' in window)){startLoop();return;}
+  BarcodeDetector.getSupportedFormats()
+    .then(function(fmts){
+      var want=['qr_code','code_128','code_39','ean_13','ean_8','itf','data_matrix','upc_a','upc_e'];
+      var ok=fmts.filter(function(f){return want.indexOf(f)>-1;});
+      if(ok.length>0){
+        try{
+          detector=new BarcodeDetector({formats:ok});
+          engine='native';
+          var b=document.getElementById('engineBadge');
+          b.textContent='Native';b.className='eng-native';
+          document.getElementById('stratBadge').style.display='none';
+        }catch(e){engine='jsqr';}
+      }
+      startLoop();
+    })
+    .catch(function(){startLoop();});
+}
+
+function flipCamera(){
+  if(!stream) return;
+  useBack=!useBack;torchOn=false;scanRunning=false;
+  document.getElementById('btnTorch').classList.remove('on');
+  document.getElementById('btnTorch').textContent='Den';
+  stream.getTracks().forEach(function(t){t.stop();});stream=null;
+  var constraint=useBack
+    ?{video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}}
+    :{video:{facingMode:{ideal:'user'},width:{ideal:640},height:{ideal:480}}};
+  navigator.mediaDevices.getUserMedia(constraint)
+    .then(function(s){onStreamReady(s);})
+    .catch(function(e){useBack=!useBack;resetCamBox();showCamError(false,e.name);});
+}
+
+// ══ IMEI CACHE (dung fetch thay google.script.run) ══
+function loadIMEICache(){
+  if(cacheLoading||!selectedWH) return;
+  cacheLoading=true;
+  var cs=document.getElementById('cacheStatus');
+  cs.className='loading';cs.textContent='Dang tai '+selectedWH.label+'...';
+  document.getElementById('btnRefresh').classList.add('spinning');
+
+  gasCall(
+    {action:'getAllIMEIs', sheet:selectedWH.sheet},
+    function(data){
+      cacheLoading=false;
+      document.getElementById('btnRefresh').classList.remove('spinning');
+      if(data.error){cs.className='error';cs.textContent='Loi: '+data.error;return;}
+      imeiCache=new Map(Object.entries(data.imeiMap));
+      cacheLoaded=true;totalStock=data.total;
+      var extra=data.multiRows>0?data.total+' IMEI / '+data.totalRows+' hang':data.total+' IMEI';
+      document.getElementById('cStock').textContent=extra;
+      var t=new Date().toTimeString().slice(0,8);
+      cs.className='loaded';
+      cs.textContent=data.total+' IMEI ('+selectedWH.label+') · '+t;
+      updateStats();
+      setStatus('ok','Da tai '+data.total+' IMEI');
+      setTimeout(function(){setStatus('idle','Huong vao ma QR / Barcode...');},2000);
+    },
+    function(){
+      cacheLoading=false;
+      document.getElementById('btnRefresh').classList.remove('spinning');
+      cs.className='error';cs.textContent='Loi mang — bam Tai lai';
+    }
+  );
+}
+
+function refreshCache(){if(cacheLoading)return;cacheLoaded=false;loadIMEICache();}
+
+// ══ SCAN STRATEGIES ══
+var STRATEGIES=[
+  {w:480,h:270,filter:'grayscale(1) contrast(1.8)',inv:'dontInvert',thr:false},
+  {w:480,h:270,filter:'grayscale(1) contrast(2.8) brightness(1.15)',inv:'dontInvert',thr:false},
+  {w:480,h:270,filter:'grayscale(1) contrast(1.5)',inv:'dontInvert',thr:true},
+  {w:640,h:360,filter:'grayscale(1) contrast(2) brightness(1.05)',inv:'attemptBoth',thr:false}
+];
+
+function applyThreshold(img){
+  var d=img.data;
+  for(var i=0;i<d.length;i+=4){
+    var g=(d[i]*77+d[i+1]*150+d[i+2]*29)>>8;
+    d[i]=d[i+1]=d[i+2]=g<128?0:255;
+  }
+  return img;
+}
+
+function tryStrategy(st){
+  dCanvas.width=st.w;dCanvas.height=st.h;
+  dCtx.filter=st.filter;dCtx.imageSmoothingEnabled=false;
+  dCtx.drawImage(video,0,0,st.w,st.h);dCtx.filter='none';
+  var img=dCtx.getImageData(0,0,st.w,st.h);
+  if(st.thr) img=applyThreshold(img);
+  var code=jsQR(img.data,st.w,st.h,{inversionAttempts:st.inv});
+  if(code&&code.data.trim()){onCode(code.data.trim());return true;}
+  return false;
+}
+
+function scanJsQR(){
+  if(video.readyState<2) return;
+  var maxS=1;
+  if(noCodeFrames>10) maxS=2;
+  if(noCodeFrames>25) maxS=3;
+  if(noCodeFrames>50) maxS=4;
+  document.getElementById('stratBadge').textContent='S'+maxS;
+  var found=false;
+  for(var i=0;i<maxS&&!found;i++) found=tryStrategy(STRATEGIES[i]);
+  if(found) noCodeFrames=0; else noCodeFrames++;
+}
+
+function scanNative(){
+  if(video.readyState<2) return;
+  detector.detect(video).then(function(codes){
+    if(codes.length>0) onCode(codes[0].rawValue.trim());
+  }).catch(function(){});
+}
+
+function startLoop(){
+  if(scanRunning) return;
+  scanRunning=true;
+  var rvfc='requestVideoFrameCallback' in video;
+  if(engine==='native'){
+    var loopN=function(){
+      if(!scanRunning) return;
+      scanNative();
+      if(rvfc) video.requestVideoFrameCallback(loopN); else setTimeout(loopN,33);
+    };
+    if(rvfc) video.requestVideoFrameCallback(loopN); else loopN();
+  } else {
+    var loopJ=function(){
+      if(!scanRunning) return;
+      scanJsQR();
+      if(rvfc) video.requestVideoFrameCallback(loopJ); else requestAnimationFrame(loopJ);
+    };
+    if(rvfc) video.requestVideoFrameCallback(loopJ); else loopJ();
+  }
+}
+
+// ══ XU LY MA QUET ══
+function onCode(imei){
+  var now=Date.now();
+  if(imei===lastCode&&now-lastTime<COOLDOWN) return;
+  lastCode=imei;lastTime=now;
+  var key=imei.toUpperCase();
+  if(scanned.has(key)){
+    beep(500,80);setStatus('dup','Trung: '+imei);
+    cDup++;addItem(imei,'dup','Da quet trong phien nay');
+    vibrate([30,30,30]);updateStats();return;
+  }
+  scanned.add(key);
+
+  if(cacheLoaded&&imeiCache){
+    var result=imeiCache.get(key);
+    cTotal++;document.getElementById('cTotal').textContent=cTotal;
+    if(result){
+      cOk++;document.getElementById('cOk').textContent=cOk;
+      var sub='';
+      if(result.imeiCount>1){
+        var html=result.allImei.map(function(v){
+          return v.toUpperCase()===key
+            ?'<b style="color:#58a6ff">'+v+'</b>'
+            :'<span style="color:#555">'+v+'</span>';
+        }).join(' &nbsp;·&nbsp; ');
+        sub='Hang '+result.row+' &nbsp;·&nbsp; '+result.imeiCount+' IMEI: '+html;
+      } else {sub='Hang '+result.row;}
+      var pfx=result.alreadyChecked?'Da kiem truoc &nbsp;':'';
+      addItem(imei,result.alreadyChecked?'dup':'ok',pfx+sub);
+      setStatus('ok','Co trong kho: '+imei);
+      vibrate([100]);beep(1200,120);
+      result.alreadyChecked=true;
+      // markChecked: fire & forget
+      gasCall({action:'markChecked',row:result.row,sheet:selectedWH.sheet},
+        function(){},function(){});
+    } else {
+      cErr++;document.getElementById('cErr').textContent=cErr;
+      addItem(imei,'err','Khong co trong kho');
+      setStatus('err','Khong tim thay: '+imei);
+      vibrate([200,80,200]);beep(220,350);
+    }
+    updateStats();
+    setTimeout(function(){setStatus('idle','Huong vao ma QR / Barcode IMEI...');},1500);
+
+  } else {
+    // Fallback: goi truc tiep neu chua co cache
+    setStatus('load','Dang kiem tra...');
+    gasCall(
+      {action:'checkIMEI',imei:imei,sheet:selectedWH?selectedWH.sheet:'Sheet1'},
+      function(res){
+        cTotal++;document.getElementById('cTotal').textContent=cTotal;
+        if(res.found){
+          cOk++;document.getElementById('cOk').textContent=cOk;
+          addItem(imei,'ok','Hang '+res.row);
+          setStatus('ok','Co trong kho: '+imei);
+          vibrate([100]);beep(1200,120);
+        } else {
+          cErr++;document.getElementById('cErr').textContent=cErr;
+          addItem(imei,'err','Khong co trong kho');
+          setStatus('err','Khong tim thay: '+imei);
+          vibrate([200,80,200]);beep(220,350);
+        }
+        updateStats();
+        setTimeout(function(){setStatus('idle','Huong vao ma QR / Barcode IMEI...');},1500);
+      },
+      function(){scanned.delete(key);setStatus('err','Loi mang');}
+    );
+  }
+}
+
+// ══ STATS + UI + AUDIO ══
+function updateStats(){
+  document.getElementById('stTotal').textContent=cTotal;
+  document.getElementById('stOk').textContent=cOk;
+  document.getElementById('stErr').textContent=cErr;
+  document.getElementById('stDup').textContent=cDup;
+  var remain=totalStock>0?Math.max(0,totalStock-cOk):'--';
+  document.getElementById('stRemain').textContent=remain;
+  var pct=totalStock>0?Math.round((cOk/totalStock)*100):0;
+  document.getElementById('stPct').textContent=pct+'%';
+  document.getElementById('progBar').style.width=pct+'%';
+}
+
+function toggleTorch(){
+  if(!vtrack) return;torchOn=!torchOn;
+  vtrack.applyConstraints({advanced:[{torch:torchOn}]}).then(function(){
+    var b=document.getElementById('btnTorch');
+    b.classList.toggle('on',torchOn);b.textContent=torchOn?'Tat':'Den';
+  }).catch(function(){torchOn=!torchOn;});
+}
+
+function applyZoom(v){
+  if(!vtrack) return;
+  document.getElementById('zVal').textContent=parseFloat(v).toFixed(1)+'x';
+  try{vtrack.applyConstraints({advanced:[{zoom:parseFloat(v)}]});}catch(e){}
+}
+
+function beep(freq,dur){
+  try{
+    if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    var o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.frequency.value=freq;o.type='sine';
+    g.gain.setValueAtTime(0.3,audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+dur/1000);
+    o.start();o.stop(audioCtx.currentTime+dur/1000);
+  }catch(e){}
+}
+
+function addItem(imei,type,sub){
+  var icons={ok:'OK',err:'LOI',dup:'!'};
+  var cls={ok:'qi-ok',err:'qi-err',dup:'qi-dup'};
+  var t=new Date().toTimeString().slice(0,8);
+  var el=document.createElement('div');
+  el.className='qi '+cls[type];
+  el.innerHTML='<div class="qi-ico">'+icons[type]+'</div>'
+    +'<div class="qi-bd"><div class="qi-imei">'+imei+'</div><div class="qi-sub">'+sub+'</div></div>'
+    +'<div class="qi-t">'+t+'</div>';
+  document.getElementById('queue').prepend(el);
+}
+
+function setStatus(type,msg){
+  var cls={idle:'s-idle',load:'s-load',ok:'s-ok',err:'s-err',dup:'s-dup'};
+  var b=document.getElementById('sb');
+  b.className=cls[type]||'s-idle';b.textContent=msg;
+}
+
+function clearAll(){
+  document.getElementById('queue').innerHTML='';
+  scanned.clear();cOk=cErr=cTotal=cDup=0;lastCode='';noCodeFrames=0;
+  ['cOk','cErr','cTotal'].forEach(function(id){document.getElementById(id).textContent='0';});
+  updateStats();
+}
+
+function vibrate(p){try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}}
+
+document.addEventListener('touchstart',function(){
+  if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+},{once:true});
+
+initWarehouseScreen();
+</script>
+</body>
+</html>
