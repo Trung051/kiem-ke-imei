@@ -39,9 +39,9 @@
     /* CAMERA */
     .cam-wrap{position:relative;width:100%;background:#000;overflow:hidden;min-height:200px;max-height:58vw}
     #video{width:100%;height:100%;object-fit:cover;display:block}
-    #camBox{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0d1117;padding:16px}
+    #camBox{position:absolute;inset:0;z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0d1117;padding:16px;overflow-y:auto}
     #camBox.hidden{display:none}
-    #btnOpenCam{padding:13px 32px;margin-bottom:10px;background:linear-gradient(135deg,#1f6feb,#58a6ff);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(88,166,255,.3);-webkit-tap-highlight-color:transparent}
+    #btnOpenCam{padding:13px 32px;margin-bottom:10px;background:linear-gradient(135deg,#1f6feb,#58a6ff);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(88,166,255,.3);-webkit-tap-highlight-color:transparent;white-space:nowrap}
     #btnOpenCam:active{opacity:.8}
     #btnOpenCam:disabled{opacity:.5;pointer-events:none}
     #camGuide{width:100%;max-width:340px;margin-top:6px;background:#161b22;border:1px solid #21262d;border-radius:10px;padding:12px 14px;font-size:11px;color:#6e7681;line-height:2;display:none}
@@ -79,6 +79,7 @@
     input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#58a6ff;cursor:pointer}
     .zlabel{font-size:10px;color:#aaa;min-width:30px;text-align:center}
 
+    /* STATUS */
     #sb{min-height:30px;padding:6px 14px;font-size:12px;text-align:center;transition:background .2s,color .2s}
     .s-idle{background:#161b22;color:#8b949e}
     .s-load{background:#0d1b2a;color:#58a6ff}
@@ -86,6 +87,7 @@
     .s-err{background:#1f0d0d;color:#f85149;font-weight:600}
     .s-dup{background:#1f1d0d;color:#d29922;font-weight:600}
 
+    /* INFO BAR */
     .ibar{display:flex;justify-content:space-between;align-items:center;padding:5px 12px;font-size:11px;border-bottom:1px solid #1c2128;background:#0d1117;gap:6px}
     .ibar-left{display:flex;flex-direction:column;gap:2px}
     .ibar-left span{color:#8b949e}
@@ -100,6 +102,7 @@
     #btnRefresh.spinning{animation:spin .8s linear infinite}
     @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 
+    /* STATS */
     .stats-panel{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px;background:#0d1117;border-bottom:1px solid #1c2128}
     .stat-box{background:#161b22;border-radius:8px;padding:8px 4px;text-align:center;border:1px solid #21262d}
     .stat-box.ok{border-color:#238636;background:#0d2018}
@@ -117,6 +120,7 @@
     .prog-wrap{height:3px;background:#21262d;overflow:hidden}
     .prog-bar{height:100%;background:linear-gradient(to right,#238636,#3fb950);width:0%;transition:width .4s ease}
 
+    /* QUEUE */
     #queue{padding:6px 8px 100px}
     .qi{display:flex;align-items:center;padding:9px 11px;margin-bottom:5px;border-radius:8px;animation:pop .22s ease}
     @keyframes pop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
@@ -221,7 +225,7 @@ function gasCall(params, onSuccess, onFail) {
   fetch(GAS_URL+'?'+qs)
     .then(function(r){ return r.json(); })
     .then(function(data){ onSuccess(data); })
-    .catch(function(e){ if(onFail) onFail(e); else console.error(e); });
+    .catch(function(e){ if(onFail) onFail(e); });
 }
 
 // ══ POLYFILL ══
@@ -260,7 +264,6 @@ function initWarehouseScreen(){
       if(saved) selectWarehouse(saved);
     },
     function(){
-      // Fallback neu loi mang
       warehouses=[
         {id:'wh1',label:'Kho 45XVNT',sheet:'Sheet1'},
         {id:'wh2',label:'Kho 141',   sheet:'Sheet2'}
@@ -326,9 +329,8 @@ function resetSession(){
 
 // ══ CAM BOX ══
 function resetCamBox(){
-  var box=document.getElementById('camBox');
+  document.getElementById('camBox').classList.remove('hidden');
   var btn=document.getElementById('btnOpenCam');
-  box.classList.remove('hidden');
   btn.disabled=false;
   btn.textContent='📷 Mo Camera';
   document.getElementById('camGuide').classList.remove('show');
@@ -346,16 +348,16 @@ function showCamError(autoDenied,errName){
     if(autoDenied){
       title.textContent='⚠️ Domain bi chan tu dong';
       body.innerHTML=
-        'Chrome tu chon "Chan" cho domain nay.<br>'
+        'Chrome tu chon "Chan" cho trang nay.<br>'
         +'<div class="sep"></div>'
         +'<b>Bam bieu tuong 🔒 tren thanh dia chi</b><br>'
-        +'→ Quyen hoac Cai dat trang<br>'
+        +'→ Quyen / Cai dat trang<br>'
         +'→ Camera: <span class="red">Chan</span> → <span class="grn">Cho phep</span><br>'
         +'→ Tai lai trang → Bam Thu Lai<br>'
         +'<div class="sep"></div>'
-        +'<b>Hoac mo tab moi, nhap:</b><br>'
+        +'<b>Hoac mo tab moi nhap:</b><br>'
         +'<span class="blu">chrome://settings/content/camera</span><br>'
-        +'→ Xoa trang web bi chan → Bam Thu Lai';
+        +'→ Xoa trang bi chan → Bam Thu Lai';
     } else {
       title.textContent='🚫 Da tu choi quyen camera';
       body.innerHTML=
@@ -366,7 +368,7 @@ function showCamError(autoDenied,errName){
   } else if(errName==='NotReadableError'||errName==='TrackStartError'){
     title.className='gt yellow';
     title.textContent='⚠️ Camera dang ban';
-    body.innerHTML='Dong Zalo/TikTok roi bam <b>Thu Lai</b>.';
+    body.innerHTML='Dong Zalo / TikTok roi bam <b>Thu Lai</b>.';
   } else {
     title.className='gt red';
     title.textContent='Loi: '+errName;
@@ -375,24 +377,21 @@ function showCamError(autoDenied,errName){
   guide.classList.add('show');
 }
 
-// ══ MO CAMERA (goi truc tiep trong onclick) ══
+// ══ MO CAMERA ══
 document.getElementById('btnOpenCam').onclick=function(){
   var btn=this;
   btn.disabled=true;
   btn.textContent='Dang mo...';
   document.getElementById('camGuide').classList.remove('show');
-
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
     showCamError(false,'NotSupportedError'); return;
   }
-
   var constraint=useBack
     ?{video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}}
     :{video:{facingMode:{ideal:'user'},width:{ideal:640},height:{ideal:480}}};
-
   var t0=Date.now();
   navigator.mediaDevices.getUserMedia(constraint)
-    .then(function(s){ onStreamReady(s); })
+    .then(function(s){onStreamReady(s);})
     .catch(function(e){
       btn.disabled=false;
       btn.textContent='🔄 Thu Lai';
@@ -455,24 +454,23 @@ function flipCamera(){
     .catch(function(e){useBack=!useBack;resetCamBox();showCamError(false,e.name);});
 }
 
-// ══ IMEI CACHE (dung fetch thay google.script.run) ══
+// ══ CACHE (fetch thay google.script.run) ══
 function loadIMEICache(){
   if(cacheLoading||!selectedWH) return;
   cacheLoading=true;
   var cs=document.getElementById('cacheStatus');
   cs.className='loading';cs.textContent='Dang tai '+selectedWH.label+'...';
   document.getElementById('btnRefresh').classList.add('spinning');
-
   gasCall(
-    {action:'getAllIMEIs', sheet:selectedWH.sheet},
+    {action:'getAllIMEIs',sheet:selectedWH.sheet},
     function(data){
       cacheLoading=false;
       document.getElementById('btnRefresh').classList.remove('spinning');
       if(data.error){cs.className='error';cs.textContent='Loi: '+data.error;return;}
       imeiCache=new Map(Object.entries(data.imeiMap));
       cacheLoaded=true;totalStock=data.total;
-      var extra=data.multiRows>0?data.total+' IMEI / '+data.totalRows+' hang':data.total+' IMEI';
-      document.getElementById('cStock').textContent=extra;
+      // ★ Hien tong IMEI / tong hang
+      document.getElementById('cStock').textContent=data.total+' IMEI / '+data.totalRows+' hang';
       var t=new Date().toTimeString().slice(0,8);
       cs.className='loaded';
       cs.textContent=data.total+' IMEI ('+selectedWH.label+') · '+t;
@@ -490,7 +488,7 @@ function loadIMEICache(){
 
 function refreshCache(){if(cacheLoading)return;cacheLoaded=false;loadIMEICache();}
 
-// ══ SCAN STRATEGIES ══
+// ══ SCAN ══
 var STRATEGIES=[
   {w:480,h:270,filter:'grayscale(1) contrast(1.8)',inv:'dontInvert',thr:false},
   {w:480,h:270,filter:'grayscale(1) contrast(2.8) brightness(1.15)',inv:'dontInvert',thr:false},
@@ -564,6 +562,7 @@ function onCode(imei){
   if(imei===lastCode&&now-lastTime<COOLDOWN) return;
   lastCode=imei;lastTime=now;
   var key=imei.toUpperCase();
+
   if(scanned.has(key)){
     beep(500,80);setStatus('dup','Trung: '+imei);
     cDup++;addItem(imei,'dup','Da quet trong phien nay');
@@ -584,13 +583,14 @@ function onCode(imei){
             :'<span style="color:#555">'+v+'</span>';
         }).join(' &nbsp;·&nbsp; ');
         sub='Hang '+result.row+' &nbsp;·&nbsp; '+result.imeiCount+' IMEI: '+html;
-      } else {sub='Hang '+result.row;}
+      } else {
+        sub='Hang '+result.row;
+      }
       var pfx=result.alreadyChecked?'Da kiem truoc &nbsp;':'';
       addItem(imei,result.alreadyChecked?'dup':'ok',pfx+sub);
       setStatus('ok','Co trong kho: '+imei);
       vibrate([100]);beep(1200,120);
       result.alreadyChecked=true;
-      // markChecked: fire & forget
       gasCall({action:'markChecked',row:result.row,sheet:selectedWH.sheet},
         function(){},function(){});
     } else {
@@ -603,7 +603,6 @@ function onCode(imei){
     setTimeout(function(){setStatus('idle','Huong vao ma QR / Barcode IMEI...');},1500);
 
   } else {
-    // Fallback: goi truc tiep neu chua co cache
     setStatus('load','Dang kiem tra...');
     gasCall(
       {action:'checkIMEI',imei:imei,sheet:selectedWH?selectedWH.sheet:'Sheet1'},
@@ -628,12 +627,13 @@ function onCode(imei){
   }
 }
 
-// ══ STATS + UI + AUDIO ══
+// ══ STATS ══
 function updateStats(){
   document.getElementById('stTotal').textContent=cTotal;
   document.getElementById('stOk').textContent=cOk;
   document.getElementById('stErr').textContent=cErr;
   document.getElementById('stDup').textContent=cDup;
+  // ★ Chua kiem = tong IMEI - so IMEI da quet co trong kho
   var remain=totalStock>0?Math.max(0,totalStock-cOk):'--';
   document.getElementById('stRemain').textContent=remain;
   var pct=totalStock>0?Math.round((cOk/totalStock)*100):0;
